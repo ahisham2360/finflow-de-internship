@@ -1,0 +1,8 @@
+pandas
+duckdb
+requests
+fredapi
+matplotlib
+seaborn
+pylint
+pytest
