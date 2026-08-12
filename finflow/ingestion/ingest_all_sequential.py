@@ -3,6 +3,8 @@ import pandas as pd
 import requests
 import json
 from pathlib import Path
+import pyarrow as pa
+import pyarrow.parquet as pq
 
 from finflow.config.settings import PipelineConfig
 from finflow.config.logger import get_logger
@@ -122,7 +124,7 @@ def ingest_fred(config: PipelineConfig, api_key: str) -> None:
 
 def ingest_complaints(config: PipelineConfig) -> None:
     """
-    Downloads CFPB complaints, keeps only Credit Card and Checking/Savings complaints,
+    Loads CFPB complaints csv, keeps only Credit Card and Checking/Savings complaints,
     then saves them as a parquet file.
     """
 
@@ -134,65 +136,56 @@ def ingest_complaints(config: PipelineConfig) -> None:
         processed_dir = Path(config.processed_dir)
         processed_dir.mkdir(parents=True, exist_ok=True)
 
+        raw_path = Path(config.raw_dir) / "complaints.csv"
         processed_path = processed_dir / "complaints.parquet"
 
-        url = "https://www.consumerfinance.gov/data-research/consumer-complaints/search/api/v1/"
-
-        products = [
+        products = {
             "Credit card",
             "Checking or savings account"
-        ]
+        }
 
-        all_complaints = []
-        offset = 0
-        batch_size = 10000
+        writer = None
+        row_count = 0
 
-        while True:
+        try:
+            text_columns = [
+                "Date received",
+                "Product",
+                "Sub-product",
+                "Issue",
+                "Sub-issue",
+                "Consumer complaint narrative",
+                "Company public response",
+                "Company",
+                "State",
+                "ZIP code",
+                "Tags",
+                "Submitted via",
+                "Date sent to company",
+                "Company response to consumer",
+                "Timely response?"
+            ]
 
-            params = {
-                "size": batch_size,
-                "from": offset,
-                "product": products
+            for chunk in pd.read_csv(raw_path, chunksize=100000, low_memory=False):
+                for column in text_columns:
+                    chunk[column] = chunk[column].fillna("").astype(str)
 
-            }
-            print(f"Requesting batch starting at {offset}...")
+                chunk = chunk[chunk["Product"].isin(products)]
 
-            for attempt in range(3):
-                try:
-                    response = requests.get(url, params=params, timeout=120, stream=True)
-                    response.raise_for_status()
+                if chunk.empty:
+                    continue
 
-                    content = b""
+                table = pa.Table.from_pandas(chunk, preserve_index=False)
 
-                    for chunk in response.iter_content(chunk_size=8192):
-                        if chunk:
-                            content += chunk
+                if writer is None:
+                    writer = pq.ParquetWriter(processed_path, table.schema)
 
-                    data = json.loads(content)
+                writer.write_table(table)
+                row_count += len(chunk)
 
-                    break
-                except requests.RequestException as e:
-                    print(f"Attempt {attempt + 1}/3 failed at offset {offset}: {e}")
-
-                    if attempt == 2:
-                        raise
-
-            hits = data["hits"]["hits"]
-            if not hits:
-                print("No more complaints. Stopping.")
-                break
-
-            print(f"Downloaded complaints from {offset} to {offset + len(hits) - 1}")
-
-            for complaint in hits:
-                all_complaints.append(complaint["_source"])
-
-            offset += len(hits)
-
-        df = pd.DataFrame(all_complaints)
-        df.to_parquet(processed_path, index=False)
-
-        row_count = len(df)
+        finally:
+            if writer is not None:
+                writer.close()    
 
         end_time = time.perf_counter()
         logger.info(f"Successfully ingested {row_count} complaints in {end_time - start_time:.2f} seconds.")
