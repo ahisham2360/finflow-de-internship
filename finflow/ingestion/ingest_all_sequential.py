@@ -1,7 +1,5 @@
 import time
 import pandas as pd
-import requests
-import json
 from pathlib import Path
 import pyarrow as pa
 import pyarrow.parquet as pq

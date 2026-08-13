@@ -2,6 +2,8 @@
 
 ## Benchmark Results
 
+
+
 The sequential ingestion took **168.46 seconds**, while the parallel ingestion took **111.37 seconds**.
 The measured speedup was:
 **168.46 / 111.37 = 1.51×**
@@ -30,3 +32,28 @@ This has little benefit here because ingestion is I/O-bound (network + disk), so
 ### In what scenario would you switch to it for ingestion?
 
 I would switch to ProcessPoolExecutor if the ingestion became CPU-bound, such as heavy data transformations or calculations, because separate processes can execute CPU-intensive work in parallel.
+
+## 1.4
+
+==================================================
+            TRANSFORMATION BENCHMARK
+==================================================
+Chunk size:       500,000 rows
+Worker processes:       4
+--------------------------------------------------
+Method                    Time (s)        Speedup
+--------------------------------------------------
+Sequential                  4.02           1.00x
+Parallel                    6.54           0.61x
+==================================================
+            TRANSFORMATION BENCHMARK
+==================================================
+Chunk size:       1,000,000 rows
+Worker processes:       4
+--------------------------------------------------
+Method                    Time (s)        Speedup
+--------------------------------------------------
+Sequential                  4.00           1.00x
+Parallel                    7.50           0.53x
+==================================================
+
