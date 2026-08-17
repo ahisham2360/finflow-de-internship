@@ -33,27 +33,48 @@ This has little benefit here because ingestion is I/O-bound (network + disk), so
 
 I would switch to ProcessPoolExecutor if the ingestion became CPU-bound, such as heavy data transformations or calculations, because separate processes can execute CPU-intensive work in parallel.
 
-## 1.4
+## 1.4 - Parallel Transformation
 
+### Benchmark Results
+
+Number of workers: 4
+Each chunk size was run 3 times and the lowest time was used
 ==================================================
             TRANSFORMATION BENCHMARK
 ==================================================
 Chunk size:       500,000 rows
-Worker processes:       4
 --------------------------------------------------
 Method                    Time (s)        Speedup
 --------------------------------------------------
-Sequential                  4.02           1.00x
-Parallel                    6.54           0.61x
-==================================================
-            TRANSFORMATION BENCHMARK
+Sequential                   4.13           1.00x
+Parallel                     5.07           0.82x
 ==================================================
 Chunk size:       1,000,000 rows
-Worker processes:       4
 --------------------------------------------------
 Method                    Time (s)        Speedup
 --------------------------------------------------
-Sequential                  4.00           1.00x
-Parallel                    7.50           0.53x
+Sequential                   4.03           1.00x
+Parallel                     6.19           0.65x
+==================================================
+Chunk size:       2,000,000 rows
+--------------------------------------------------
+Method                    Time (s)        Speedup
+--------------------------------------------------
+Sequential                   4.02           1.00x
+Parallel                     6.32           0.64x
 ==================================================
 
+### Analysis
+
+The **500,000 chunk size** was selected because it gave the best result.
+
+**Small Chunks:**
+reduce amount of data handled by each worker but increase the number of chunks and overhead.
+**Large Chunks:**
+reduce number of chunks but need more memory per worker (slower in these tests).
+
+### Sequential vs Parallel
+
+Parallel transformation was slower than sequential for all chunk sizes. The scale of transformation operations isn't huge, so the overhead of creating processes, transferring DataFrame chunks between processes, and combining the results was greater than the benefit of parallel CPU execution.
+
+with 1 worker, we get zero parallel speedup but still pay the multiprocessing cost.

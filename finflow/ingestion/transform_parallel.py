@@ -65,7 +65,7 @@ def benchmark_transformation(config: PipelineConfig) -> None:
     logger.info("Starting Benchmark Transformation...")
 
     chunk_size = 500000
-    n_workers = 1
+    n_workers = 4
 
     try:
 
@@ -78,8 +78,6 @@ def benchmark_transformation(config: PipelineConfig) -> None:
         start_time = time.perf_counter()
         transform_sequential(config, chunk_size)
         sequential_time = time.perf_counter() - start_time
-
-
 
         speedup = sequential_time / parallel_time
 
