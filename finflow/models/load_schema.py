@@ -186,11 +186,13 @@ def load_fact_transactions(config: PipelineConfig) -> None:
 
     df = pd.read_parquet(path)
 
+    source_row_count = len(df)
+
     df["transaction_id"] = range(1, len(df) + 1)
 
     chunks = [
         df.iloc[i:i + config.chunk_size]
-        for i in range(0, len(df), config.chunk_size)
+        for i in range(0, source_row_count, config.chunk_size)
     ]
 
     with Manager() as manager:
@@ -209,7 +211,6 @@ def load_fact_transactions(config: PipelineConfig) -> None:
 
             row_counts = [future.result() for future in futures]
             total_rows = sum(row_counts)
-            source_row_count = len(df)
 
             logger.info(f"Loaded {total_rows} fact transactions.")
 

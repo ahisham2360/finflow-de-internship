@@ -42,6 +42,7 @@ def transform_sequential(config: PipelineConfig, chunk_size: int) -> None:
     transformed_df.to_parquet(output_path, index=False)
 
 
+
 def transform_parallel(config: PipelineConfig, chunk_size: int, n_workers: int) -> None:
     parquet_path = Path(config.processed_dir) / "transactions.parquet"
     output_path = Path(config.processed_dir) / "transactions_transformed.parquet"
@@ -97,6 +98,7 @@ def benchmark_transformation(config: PipelineConfig) -> None:
     except Exception as e:
         logger.error(f"Benchmark transformation failed: {str(e)}")
         raise
+
 
 
 if __name__ == "__main__":
